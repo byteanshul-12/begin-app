@@ -200,8 +200,8 @@ export async function addMilestoneApi(req: Request, res: Response) {
 
 export async function transferOwnershipApi(req: Request, res: Response) {
   try {
-    const { newOwnerEmail } = req.body;
-    const updated = await startupService.transferOwnership(req.params.id, req.user.userId, newOwnerEmail);
+    const target = req.body.newOwnerEmail || req.body.newOwnerId;
+    const updated = await startupService.transferOwnership(req.params.id, req.user.userId, target);
     return res.status(200).json({
       success: true,
       message: "Venture ownership transferred successfully.",

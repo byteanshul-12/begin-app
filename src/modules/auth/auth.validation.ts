@@ -1,42 +1,52 @@
-import { BadRequestError } from "../../shared/errors/index.ts";
+import { z } from "zod";
 import { sanitizeEmail } from "../../shared/utils/string.utils.ts";
 
 /**
- * Validated payload structures for authentication endpoints.
+ * Zod validation schemas and types for authentication endpoints.
  */
 
-export interface SignupInput {
-  email: string;
-  password: string;
-}
-export interface LoginInput {
-  email: string;
-  password: string;
+export const signupSchema = z.object({
+  email: z
+    .string()
+    .min(1, "Email is required.")
+    .transform((val) => sanitizeEmail(val))
+    .pipe(z.string().email("Please provide a valid email address.")),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters."),
+});
+
+export const loginSchema = z.object({
+  email: z
+    .string()
+    .min(1, "Email is required.")
+    .transform((val) => sanitizeEmail(val))
+    .pipe(z.string().email("Please provide a valid email address.")),
+  password: z
+    .string()
+    .min(1, "Password is required."),
+});
+
+export const googleCallbackQuerySchema = z
+  .object({
+    code: z.string().optional(),
+    error: z.string().optional(),
+  })
+  .passthrough();
+
+export type SignupInput = z.infer<typeof signupSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;
+
+/**
+ * Validates signup payload and returns sanitized typed data.
+ */
+export function validateSignupPayload(body: any): SignupInput {
+  return signupSchema.parse(body);
 }
 
 /**
- * Validation functions for authentication endpoints.
+ * Validates login payload and returns sanitized typed data.
  */
-
-export function validateSignupPayload(body: any): SignupInput {
-  let { email, password } = body || {};
-  if (!email || !password) {
-    throw new BadRequestError("Email and password are required.");
-  }
-  email = sanitizeEmail(email);
-  password = String(password).trim();
-  if (password.length < 8) {
-    throw new BadRequestError("Password must be at least 8 characters.");
-  }
-  return { email, password };
-}
-
 export function validateLoginPayload(body: any): LoginInput {
-  let { email, password } = body || {};
-  if (!email || !password) {
-    throw new BadRequestError("Email and password are required.");
-  }
-  email = sanitizeEmail(email);
-  password = String(password).trim();
-  return { email, password };
+  return loginSchema.parse(body);
 }

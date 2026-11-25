@@ -1,4 +1,22 @@
 import "dotenv/config";
+import { z } from "zod";
+
+/**
+ * Zod schema validating critical environment variables with development defaults.
+ */
+const envSchema = z.object({
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  PORT: z.coerce.number().default(8000),
+  MONGO_URI: z.string().default("mongodb://localhost:27017/begin_db"),
+  JWT_SECRET: z.string().default("default_jwt_secret_dev_only"),
+  RESEND_API_KEY: z.string().default("re_dummy_dev_key"),
+  EMAIL_FROM: z.string().default("onboarding@resend.dev"),
+  GOOGLE_CLIENT_ID: z.string().default(""),
+  GOOGLE_CLIENT_SECRET: z.string().default(""),
+  GOOGLE_CALLBACK_URL: z.string().default("http://localhost:8000/auth/google/callback"),
+});
+
+const parsedEnv = envSchema.parse(process.env);
 
 /**
  * Interface describing database connection settings.
@@ -54,31 +72,30 @@ export interface AppConfig {
 
 /**
  * Centralized environment configuration.
- * Exposes strongly typed and defaulted configuration properties
- * across database, authentication, external services, and runtime.
+ * Exposes strongly typed and validated configuration properties.
  */
 export const config: AppConfig = {
-  env: process.env.NODE_ENV || "development",
-  port: parseInt(process.env.PORT || "8000", 10),
+  env: parsedEnv.NODE_ENV,
+  port: parsedEnv.PORT,
 
   database: {
-    mongoUri: process.env.MONGO_URI || "mongodb://localhost:27017/begin_db",
+    mongoUri: parsedEnv.MONGO_URI,
   },
 
   jwt: {
-    secret: process.env.JWT_SECRET || "default_jwt_secret_dev_only",
+    secret: parsedEnv.JWT_SECRET,
     expiresIn: "7d",
   },
 
   email: {
-    resendApiKey: process.env.RESEND_API_KEY || "re_dummy_dev_key",
-    from: process.env.EMAIL_FROM || "onboarding@resend.dev",
+    resendApiKey: parsedEnv.RESEND_API_KEY,
+    from: parsedEnv.EMAIL_FROM,
   },
 
   googleAuth: {
-    clientId: process.env.GOOGLE_CLIENT_ID || "",
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-    callbackUrl: process.env.GOOGLE_CALLBACK_URL || "http://localhost:8000/auth/google/callback",
+    clientId: parsedEnv.GOOGLE_CLIENT_ID,
+    clientSecret: parsedEnv.GOOGLE_CLIENT_SECRET,
+    callbackUrl: parsedEnv.GOOGLE_CALLBACK_URL,
   },
 
   uploads: {

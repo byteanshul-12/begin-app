@@ -1,41 +1,58 @@
-import { BadRequestError } from "../../shared/errors/index.ts";
+import { z } from "zod";
+import { objectIdSchema, paginationQuerySchema } from "../../shared/validation/common.schemas.ts";
 import type { FollowTargetType, ShortlistItemType } from "../../shared/types/database.types.ts";
 
 /**
- * Validation rules and types for discovery filters, follow actions, and shortlisting.
+ * Zod validation schemas and types for campus discovery filters, social follows, and shortlisting.
  */
 
-export interface FollowPayload {
-  targetType: FollowTargetType;
-  targetId: string;
+export const followPayloadSchema = z.object({
+  targetType: z.enum(["USER", "STARTUP"]),
+  targetId: objectIdSchema,
+});
+
+export const shortlistPayloadSchema = z.object({
+  itemType: z.enum(["USER", "STARTUP"]),
+  itemId: objectIdSchema,
+  note: z.string().trim().max(300, "Note cannot exceed 300 characters.").optional().default(""),
+});
+
+export const searchMembersQuerySchema = paginationQuerySchema.extend({
+  q: z.string().trim().optional(),
+  role: z.string().trim().optional(),
+  college: z.string().trim().optional(),
+  skill: z.string().trim().optional(),
+  year: z.string().trim().optional(),
+  branch: z.string().trim().optional(),
+  availability: z.string().trim().optional(),
+  lookingFor: z.string().trim().optional(),
+});
+
+export const searchStartupsQuerySchema = paginationQuerySchema.extend({
+  q: z.string().trim().optional(),
+  stage: z.string().trim().optional(),
+  industry: z.string().trim().optional(),
+  category: z.string().trim().optional(),
+  hasOpenRoles: z.string().trim().optional(),
+});
+
+export const globalSearchQuerySchema = z.object({
+  q: z.string().trim().optional().default(""),
+});
+
+export type FollowPayload = z.infer<typeof followPayloadSchema>;
+export type ShortlistPayload = z.infer<typeof shortlistPayloadSchema>;
+
+/**
+ * Validates social follow action payload.
+ */
+export function validateFollowPayload(body: any): FollowPayload {
+  return followPayloadSchema.parse(body || {});
 }
 
-export interface ShortlistPayload {
-  itemType: ShortlistItemType;
-  itemId: string;
-  note?: string;
-}
-
-export function validateFollowPayload({ targetType, targetId }: any): FollowPayload {
-  if (!targetType || !["USER", "STARTUP"].includes(targetType)) {
-    throw new BadRequestError("Valid targetType (USER or STARTUP) is required.");
-  }
-  if (!targetId) {
-    throw new BadRequestError("targetId is required.");
-  }
-  return { targetType: targetType as FollowTargetType, targetId: String(targetId).trim() };
-}
-
-export function validateShortlistPayload({ itemType, itemId, note }: any): ShortlistPayload {
-  if (!itemType || !["USER", "STARTUP"].includes(itemType)) {
-    throw new BadRequestError("Valid itemType (USER or STARTUP) is required.");
-  }
-  if (!itemId) {
-    throw new BadRequestError("itemId is required.");
-  }
-  return {
-    itemType: itemType as ShortlistItemType,
-    itemId: String(itemId).trim(),
-    note: (note || "").slice(0, 300),
-  };
+/**
+ * Validates shortlist bookmark payload.
+ */
+export function validateShortlistPayload(body: any): ShortlistPayload {
+  return shortlistPayloadSchema.parse(body || {});
 }

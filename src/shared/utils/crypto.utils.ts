@@ -11,7 +11,8 @@ export const generateOTP = (): string => {
 };
 
 export const hashOTP = (otp: string): string => {
-  return createHmac("sha256", config.otp.secret)
+  const secret = process.env.OTP_SECRET || config.jwt.secret;
+  return createHmac("sha256", secret)
     .update(otp)
     .digest("hex");
 };

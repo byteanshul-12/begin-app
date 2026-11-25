@@ -68,7 +68,6 @@ async function runArchitectureTests(): Promise<void> {
   const authModule = await import("../src/modules/auth/index.ts");
   assert.ok(authModule.authRoutes, "Auth module must export authRoutes");
   assert.ok(authModule.Auth, "Auth module must export Auth model");
-  assert.ok(authModule.EmailOTP, "Auth module must export EmailOTP model");
   assert.ok(authModule.authService, "Auth module must export authService");
 
   const onboardingModule = await import("../src/modules/onboarding/index.ts");

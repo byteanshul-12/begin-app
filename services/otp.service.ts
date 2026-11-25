@@ -1,7 +1,4 @@
-import { requestOTP } from "../src/modules/auth/auth.service.ts";
+import { generateOTP, hashOTP, verifyOTP } from "../src/shared/utils/crypto.utils.ts";
 
-const sendVerificationOTP = async (email: string, purpose: any): Promise<any> => {
-  return await requestOTP(email, purpose);
-};
-
-export default sendVerificationOTP;
+export { generateOTP, hashOTP, verifyOTP };
+export default generateOTP;

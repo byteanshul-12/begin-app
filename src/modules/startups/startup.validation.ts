@@ -1,93 +1,114 @@
-import { BadRequestError } from "../../shared/errors/index.ts";
+import { z } from "zod";
+import { objectIdSchema } from "../../shared/validation/common.schemas.ts";
 import type { StartupStage, StartupVisibility, OpenRoleType } from "../../shared/types/database.types.ts";
 
 /**
- * Validation rules and types for startup entities, team invitations, open roles, and milestones.
+ * Zod validation schemas and types for startups, team members, open roles, and milestones.
  */
 
-export interface StartupPayload {
-  name: string;
-  pitch: string;
-  stage: StartupStage;
-  visibility: StartupVisibility;
-  problem: string;
-  solution: string;
-  industryTags: any;
-  links: any;
-}
+export const startupIdParamSchema = z.object({
+  id: objectIdSchema,
+});
 
-export interface OpenRolePayload {
-  title: string;
-  skillsNeeded: any;
-  commitmentHours: number;
-  roleType: OpenRoleType;
-  equityOrCreditNote: string;
-}
+export const removeMemberParamSchema = z.object({
+  id: objectIdSchema,
+  memberUserId: objectIdSchema,
+});
 
-export interface MilestonePayload {
-  title: string;
-  milestoneType: string;
-  description: string;
-}
+export const roleParamSchema = z.object({
+  id: objectIdSchema,
+  roleId: objectIdSchema,
+});
 
+export const startupPayloadSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Startup name is required.")
+    .max(100, "Startup name cannot exceed 100 characters."),
+  pitch: z
+    .string()
+    .trim()
+    .min(1, "One-line pitch is required.")
+    .max(200, "One-line pitch must not exceed 200 characters."),
+  stage: z.enum(["Idea", "Building MVP", "Launched", "Has users"]).default("Idea"),
+  visibility: z.enum(["PUBLIC", "STEALTH"]).default("PUBLIC"),
+  problem: z.string().trim().max(2000).optional().default(""),
+  solution: z.string().trim().max(2000).optional().default(""),
+  industryTags: z.union([z.array(z.string()), z.string()]).optional(),
+  links: z.record(z.string(), z.string()).optional(),
+});
+
+export const updateStartupPayloadSchema = startupPayloadSchema.partial();
+
+export const inviteMemberSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Please provide a valid email address."),
+  role: z
+    .string()
+    .trim()
+    .min(1, "Role is required.")
+    .max(50, "Role cannot exceed 50 characters."),
+});
+
+export const openRolePayloadSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, "Role title is required.")
+    .max(100, "Role title cannot exceed 100 characters."),
+  skillsNeeded: z.union([z.array(z.string()), z.string()]).optional(),
+  commitmentHours: z.coerce.number().min(0).max(100).default(0),
+  roleType: z.enum(["co-founder", "founding-team", "teammate", "intern", "advisor"]).default("teammate"),
+  equityOrCreditNote: z.string().trim().max(100).optional().default(""),
+});
+
+export const milestonePayloadSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, "Milestone title is required.")
+    .max(100, "Milestone title cannot exceed 100 characters."),
+  milestoneType: z.string().trim().max(50).default("Custom update"),
+  description: z.string().trim().max(500).optional().default(""),
+});
+
+export const transferOwnershipSchema = z
+  .object({
+    newOwnerEmail: z.string().trim().toLowerCase().email().optional(),
+    newOwnerId: objectIdSchema.optional(),
+  })
+  .refine((data) => Boolean(data.newOwnerEmail || data.newOwnerId), {
+    message: "Either newOwnerEmail or newOwnerId must be provided.",
+  });
+
+export type StartupPayload = z.infer<typeof startupPayloadSchema>;
+export type UpdateStartupPayload = z.infer<typeof updateStartupPayloadSchema>;
+export type InviteMemberPayload = z.infer<typeof inviteMemberSchema>;
+export type OpenRolePayload = z.infer<typeof openRolePayloadSchema>;
+export type MilestonePayload = z.infer<typeof milestonePayloadSchema>;
+export type TransferOwnershipPayload = z.infer<typeof transferOwnershipSchema>;
+
+/**
+ * Validates startup creation payload.
+ */
 export function validateStartupPayload(body: any): StartupPayload {
-  const { name, pitch, stage, visibility } = body || {};
-
-  if (!name || !name.trim()) {
-    throw new BadRequestError("Startup name is required.");
-  }
-
-  if (!pitch || !pitch.trim()) {
-    throw new BadRequestError("One-line pitch is required.");
-  }
-
-  if (pitch.trim().length > 200) {
-    throw new BadRequestError("One-line pitch must not exceed 200 characters.");
-  }
-
-  const validStages = ["Idea", "Building MVP", "Launched", "Has users"];
-  const selectedStage = stage && validStages.includes(stage) ? (stage as StartupStage) : "Idea";
-
-  const validVisibilities = ["PUBLIC", "STEALTH"];
-  const selectedVisibility =
-    visibility && validVisibilities.includes(visibility) ? (visibility as StartupVisibility) : "PUBLIC";
-
-  return {
-    name: name.trim(),
-    pitch: pitch.trim(),
-    stage: selectedStage,
-    visibility: selectedVisibility,
-    problem: (body.problem || "").trim(),
-    solution: (body.solution || "").trim(),
-    industryTags: body.industryTags,
-    links: body.links,
-  };
+  return startupPayloadSchema.parse(body || {});
 }
 
+/**
+ * Validates open role creation payload.
+ */
 export function validateOpenRolePayload(body: any): OpenRolePayload {
-  const { title } = body || {};
-  if (!title || !title.trim()) {
-    throw new BadRequestError("Role title is required.");
-  }
-
-  return {
-    title: title.trim(),
-    skillsNeeded: body.skillsNeeded,
-    commitmentHours: Number(body.commitmentHours) || 0,
-    roleType: (body.roleType as OpenRoleType) || "teammate",
-    equityOrCreditNote: (body.equityOrCreditNote || "").trim(),
-  };
+  return openRolePayloadSchema.parse(body || {});
 }
 
+/**
+ * Validates milestone creation payload.
+ */
 export function validateMilestonePayload(body: any): MilestonePayload {
-  const { title } = body || {};
-  if (!title || !title.trim()) {
-    throw new BadRequestError("Milestone title is required.");
-  }
-
-  return {
-    title: title.trim(),
-    milestoneType: body.milestoneType || "Custom update",
-    description: (body.description || "").trim(),
-  };
+  return milestonePayloadSchema.parse(body || {});
 }

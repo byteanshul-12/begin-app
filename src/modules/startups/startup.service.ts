@@ -400,10 +400,10 @@ export async function addMilestone(startupId: string | any, ownerId: string | an
 export async function transferOwnership(
   startupId: string | any,
   currentOwnerId: string | any,
-  newOwnerEmail: string
+  newOwnerIdentifier: string
 ): Promise<IStartup> {
-  if (!newOwnerEmail || !newOwnerEmail.trim()) {
-    throw new BadRequestError("New owner email is required.");
+  if (!newOwnerIdentifier || !newOwnerIdentifier.trim()) {
+    throw new BadRequestError("New owner email or ID is required.");
   }
 
   const startup = await startupRepository.findDocumentById(startupId);
@@ -415,7 +415,11 @@ export async function transferOwnership(
     throw new ForbiddenError("Only the current founder can transfer venture ownership.");
   }
 
-  const targetAuth = await Auth.findOne({ email: newOwnerEmail.toLowerCase().trim() }).lean();
+  const query = newOwnerIdentifier.includes("@")
+    ? { email: newOwnerIdentifier.toLowerCase().trim() }
+    : { _id: newOwnerIdentifier };
+
+  const targetAuth = await Auth.findOne(query).lean();
   if (!targetAuth) {
     throw new NotFoundError("The specified user does not have an active account.");
   }

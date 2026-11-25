@@ -1,7 +1,7 @@
 import assert from "node:assert";
 import mongoose from "mongoose";
 import { connectDB, disconnectDB } from "../src/infrastructure/database/connection.ts";
-import { Auth, EmailOTP, authService } from "../src/modules/auth/index.ts";
+import { Auth, authService } from "../src/modules/auth/index.ts";
 import { Profile, profileService } from "../src/modules/profiles/index.ts";
 import { Startup, startupService } from "../src/modules/startups/index.ts";
 import { discoveryService } from "../src/modules/discovery/index.ts";
@@ -22,21 +22,16 @@ async function runIntegrationTests(): Promise<void> {
 
   const testEmail = `test.user.${Date.now()}@college.edu`;
 
-  // 2. Auth & OTP Verification
+  // 2. Auth & Password Registration & Login
   console.log("Testing Auth Module...");
-  const otpResult: any = await authService.requestOTP(testEmail, "SIGNUP");
-  assert.ok(otpResult.message, "Should return OTP message");
-
-  const otpRecord = await EmailOTP.findOne({ email: testEmail, purpose: "SIGNUP" });
-  assert.ok(otpRecord, "OTP record should exist in database");
-
-  const devOtp = otpResult.devOtp;
-  assert.ok(devOtp, "Dev OTP should be returned in non-production mode");
-
-  const authSession: any = await authService.verifyOTPAndAuthenticate(testEmail, devOtp, "SIGNUP");
+  const authSession: any = await authService.register(testEmail, "SecurePass123!");
   assert.ok(authSession.token, "JWT token should be generated");
   assert.strictEqual(authSession.isOnboarded, false, "New user should not be onboarded");
   const testUserId = authSession.user._id;
+
+  const loginSession: any = await authService.login(testEmail, "SecurePass123!");
+  assert.ok(loginSession.token, "Login token should be returned");
+  assert.strictEqual(loginSession.user._id.toString(), testUserId.toString());
 
   // 3. Profile Setup & Completion
   console.log("Testing Profiles Module...");
@@ -143,7 +138,6 @@ async function runIntegrationTests(): Promise<void> {
   await Startup.deleteOne({ _id: newStartup._id });
   await Profile.deleteOne({ userId: testUserId });
   await Auth.deleteOne({ _id: testUserId });
-  await EmailOTP.deleteMany({ email: testEmail });
   await discoveryService.toggleShortlist(testUserId, "STARTUP", newStartup._id);
 
   await disconnectDB();
